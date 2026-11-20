@@ -1,6 +1,6 @@
 # pstack
 
-> **In omp.** Install pstack with `omp plugin marketplace add gokselk/pstack-omp` and `omp plugin install pstack@pstack-omp`. Update it with `omp plugin marketplace update pstack-omp` and `omp plugin upgrade pstack@pstack-omp`. Then type each command in these docs as `/skill:<name>`, such as `/skill:setup-pstack`. Steps that need a Cursor-only feature are skipped in omp. Those features are Custom Modes, cloud agents and Projects, and automations, including the benny pack. The `pstack-omp-adapter` skill maps the rest.
+> **In omp.** Install pstack with `omp plugin marketplace add joseotaviorf/pstack-omp` and `omp plugin install pstack@pstack-omp`. Update it with `omp plugin marketplace update pstack-omp` and `omp plugin upgrade pstack@pstack-omp`. Then type each command in these docs as `/skill:<name>`, such as `/skill:setup-pstack`. Steps that need a Cursor-only feature are skipped in omp. Those features are Custom Modes, cloud agents and Projects, and automations, including the benny pack. The `pstack-omp-adapter` skill maps the rest.
 
 i'm [poteto](https://x.com/poteto). i'm not a president or ceo, but i've worked with millions of lines of code at Meta, Netflix, and Cursor. i'm also on the react core team where i help build and maintain react compiler.
 
@@ -42,7 +42,7 @@ two steps:
 
 new here? the [pstack guide](./docs/guide/README.md) walks you through a first real task, from setup and prompting through verification and overnight runs. stuck, or unsure which skill fits? ask [`/poteto-help`](./skills/poteto-help/SKILL.md).
 
-that's it. the other skills are situational, and the mode skill uses them for you as needed. out of the box, code delegates (feature, refactoring, bug fix, perf, hillclimb), prose, and judgment go to opus 5.5 at xhigh, and no role runs above xhigh. outside a review panel, fable 5.2 runs only when you name it or after two opus 5.5 runs of the same brief fail. the default panel is fable 5.2 / opus 5.5 / gemini 4 carbon. [`/setup-pstack`](./skills/setup-pstack/SKILL.md) changes any of it.
+that's it. the other skills are situational, and the mode skill uses them for you as needed. out of the box, code delegates (feature, refactoring, bug fix, perf, hillclimb), prose, and judgment go to opus 5.5 at xhigh, and no role runs above xhigh. outside a review panel, fable 5.2 runs only when you name it or after two opus 5.5 runs of the same brief fail. the default panel is fable 5.2 / opus 5.5 / gemini 4 neon. [`/setup-pstack`](./skills/setup-pstack/SKILL.md) changes any of it.
 
 ## usage
 

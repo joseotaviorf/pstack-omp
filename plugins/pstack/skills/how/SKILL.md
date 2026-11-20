@@ -14,7 +14,7 @@ When the `task` description lists approved per-call models, set `model` on every
 | --- | --- |
 | `Task` | `task`. With the batch schema, send `{ context, tasks: [{ agent, model, name, task, solutionSpace }] }`: `context` is shared background and each `task` is self-contained. |
 | `subagent_type: generalPurpose` | Omit `agent`. The default `task` agent runs. |
-| `readonly: true` | Omit `agent`, and the brief says "read-only: do not edit, write, or commit files". Check `git status` afterward. Do not use `scout` for a role that names a model: it is a cheap lookup agent. |
+| `readonly: true` | Set `agent: "pstack-readonly"`, and `model` too when the role names one. Its `bash` is for read-only commands, so it is not a sandbox: check `git status` afterward. |
 | A pstack file in a `Task` brief, such as a reference prompt or a playbook | Name it as `skill://<name>/<path>`, such as `skill://poteto-mode/playbooks/feature.md`. Subagents resolve it as you do; a relative or `plugins/pstack/...` path sends them searching the disk. When the brief has them follow a pstack skill or reference prompt, also tell them to read `skill://pstack-omp-adapter` first. |
 | The `Task` tool rejects the slug | Preflight fails with `Per-call model … is not approved` or `not available`. Handle it as the skill's rejected-slug case. If preflight says `task.perCallModel` does not allow the call, omit `model` for the rest of the session and say so once. |
 

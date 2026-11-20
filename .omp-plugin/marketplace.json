@@ -1,7 +1,7 @@
 {
   "name": "pstack-omp",
   "owner": {
-    "name": "Göksel Kabadayı"
+    "name": "José O R Ferreira"
   },
   "metadata": {
     "description": "pstack (cursor/plugins) packaged for omp"
@@ -11,9 +11,9 @@
       "name": "pstack",
       "source": "./plugins/pstack",
       "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence.",
-      "version": "0.15.43-omp.5",
+      "version": "0.15.46-omp.1",
       "author": {
-        "name": "Göksel Kabadayı"
+        "name": "José O R Ferreira"
       },
       "license": "MIT",
       "keywords": [

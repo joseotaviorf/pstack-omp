@@ -57,7 +57,7 @@ const GITHUB = "https://github.com/cursor/plugins";
 // Upstream adds a row to its Claude Code adapter for each Cursor name its skills start using, and the matching
 // TERMS entry lives in a script the sync does not fetch. A changed adapter is the signal to port both here.
 const CLAUDE_ADAPTER = "docs/harness/claude-code.md";
-const CLAUDE_ADAPTER_SHA256 = "5f859ef4fa39664b1ccdff521bcb15854f8805394191da509e68ce625b97cba6";
+const CLAUDE_ADAPTER_SHA256 = "289a9127a3597d7b3fbbe10c40aea4aea3f15cd5361a75be43806a07b96f634f";
 // The adapter routes to setup-pstack, poteto-mode, deslop, control-cli, control-ui, verify-this, and skill-creator, and
 // the README names poteto-help.
 const REQUIRED_SKILLS = ["setup-pstack", "poteto-mode", "poteto-help", "deslop", "control-cli", "control-ui", "verify-this", "skill-creator"];

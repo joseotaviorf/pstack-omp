@@ -30,6 +30,9 @@ const AGENTS = join(PSTACK, "agents");
 // adapter/agents holds agents this fork writes for omp, such as its read-only agent. They ship byte for byte, like
 // adapter/skills: no adapter rows, no path rewrites, and no upstream copy to fall back on.
 const ADAPTER_AGENTS = join(ROOT_DIRS[ADAPTER_ROOT], "agents");
+// adapter/extensions holds omp extension modules, shipped byte for byte; the tree's package.json lists them under
+// `omp.extensions`, which is how a marketplace install loads them.
+const ADAPTER_EXTENSIONS = join(ROOT_DIRS[ADAPTER_ROOT], "extensions");
 const ADAPTER_SOURCE = join(ROOT_DIRS[ADAPTER_ROOT], "omp.md");
 // The adapter ships as a hidden skill so every skill, agent, and subagent reaches it by one URL, with no path to work out.
 const ADAPTER_SKILL = "pstack-omp-adapter";
@@ -400,7 +403,7 @@ function render() {
         .map((path) => [root, path]),
     ),
     ...[...walk(AGENTS), ...walk(join(PSTACK, GUIDE)), join(PSTACK, "README.md")].map((path) => ["pstack", path]),
-    ...walk(ADAPTER_AGENTS).map((path) => [ADAPTER_ROOT, path]),
+    ...[...walk(ADAPTER_AGENTS), ...walk(ADAPTER_EXTENSIONS)].map((path) => [ADAPTER_ROOT, path]),
   ];
   const files = new Map(
     copies.map(([root, path]) => {
@@ -543,6 +546,8 @@ function outputsFor(version) {
   };
   const outputs = new Map([...files].map(([path, entry]) => [`${TREE}/${path}`, entry]));
   outputs.set(`${TREE}/.omp-plugin/plugin.json`, json({ ...manifest, version }));
+  const extensions = readdirSync(ADAPTER_EXTENSIONS).map((name) => `./extensions/${name}`);
+  outputs.set(`${TREE}/package.json`, json({ name: manifest.name, version, private: true, omp: { extensions } }));
   outputs.set(MARKETPLACE, json(catalog));
   return outputs;
 }

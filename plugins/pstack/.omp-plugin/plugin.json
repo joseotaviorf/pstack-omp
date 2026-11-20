@@ -1,12 +1,12 @@
 {
   "name": "pstack",
-  "version": "0.15.43-omp.5",
+  "version": "0.15.46-omp.1",
   "description": "if you want to go fast, go deep first. pstack helps you write less, but higher quality code. rigorous agent workflows you can parallelize with confidence.",
   "author": {
-    "name": "Göksel Kabadayı"
+    "name": "José O R Ferreira"
   },
-  "homepage": "https://github.com/gokselk/pstack-omp",
-  "repository": "https://github.com/gokselk/pstack-omp",
+  "homepage": "https://github.com/joseotaviorf/pstack-omp",
+  "repository": "https://github.com/joseotaviorf/pstack-omp",
   "license": "MIT",
   "keywords": [
     "pstack",

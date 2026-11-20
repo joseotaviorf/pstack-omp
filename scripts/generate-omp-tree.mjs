@@ -27,6 +27,9 @@ const SKILL_ROOTS = ["pstack", KIT];
 const ADAPTER_ROOT = "adapter";
 const ROOT_DIRS = { pstack: PSTACK, [KIT]: join(UPSTREAM, KIT), [ADAPTER_ROOT]: join(ROOT, "adapter") };
 const AGENTS = join(PSTACK, "agents");
+// adapter/agents holds agents this fork writes for omp, such as its read-only agent. They ship byte for byte, like
+// adapter/skills: no adapter rows, no path rewrites, and no upstream copy to fall back on.
+const ADAPTER_AGENTS = join(ROOT_DIRS[ADAPTER_ROOT], "agents");
 const ADAPTER_SOURCE = join(ROOT_DIRS[ADAPTER_ROOT], "omp.md");
 // The adapter ships as a hidden skill so every skill, agent, and subagent reaches it by one URL, with no path to work out.
 const ADAPTER_SKILL = "pstack-omp-adapter";
@@ -49,15 +52,15 @@ const TREE = "plugins/pstack";
 const OUT = join(ROOT, TREE);
 const MARKETPLACE = ".omp-plugin/marketplace.json";
 const MARKETPLACE_NAME = "pstack-omp";
-const MARKETPLACE_OWNER = "Göksel Kabadayı";
-const FORK = "https://github.com/gokselk/pstack-omp";
+const MARKETPLACE_OWNER = "José O R Ferreira";
+const FORK = "https://github.com/joseotaviorf/pstack-omp";
 const RELEASE = "release.json";
 const COMMAND = "node scripts/generate-omp-tree.mjs";
 const GITHUB = "https://github.com/cursor/plugins";
 // Upstream adds a row to its Claude Code adapter for each Cursor name its skills start using, and the matching
 // TERMS entry lives in a script the sync does not fetch. A changed adapter is the signal to port both here.
 const CLAUDE_ADAPTER = "docs/harness/claude-code.md";
-const CLAUDE_ADAPTER_SHA256 = "5f859ef4fa39664b1ccdff521bcb15854f8805394191da509e68ce625b97cba6";
+const CLAUDE_ADAPTER_SHA256 = "289a9127a3597d7b3fbbe10c40aea4aea3f15cd5361a75be43806a07b96f634f";
 // The adapter routes to setup-pstack, poteto-mode, deslop, control-cli, control-ui, verify-this, and skill-creator, and
 // the README names poteto-help.
 const REQUIRED_SKILLS = ["setup-pstack", "poteto-mode", "poteto-help", "deslop", "control-cli", "control-ui", "verify-this", "skill-creator"];
@@ -66,6 +69,9 @@ const REQUIRED_SKILLS = ["setup-pstack", "poteto-mode", "poteto-help", "deslop",
 const DROPPED_SKILLS = {
   "make-bot-ui": "it builds a page whose buttons wake a Cursor Automation routine over api2.cursor.sh, and omp has no Cursor Automations",
 };
+// adapter/skills/ skills that adapted someone else's work, each with the license file that has to ship beside its
+// SKILL.md. skill-creator is Anthropic's, Apache-2.0; the notices in its edited files say what changed.
+const ADAPTER_LICENSES = { "skill-creator": "LICENSE.txt" };
 // adapter/overlays mirrors tree paths. Each file there replaces the upstream file at its path byte for byte, with no
 // adapter rows, path rewrites, or link fallback. Each is pinned to the sha256 of the upstream file it was ported from,
 // so an upstream change to that file fails the build until it is ported.
@@ -128,6 +134,24 @@ function file(path) {
 }
 
 const text = (bytes) => Buffer.from(bytes).toString("utf8");
+
+// The frontmatter block of a markdown file, or undefined when it has none.
+const frontmatterOf = (body) => body.match(/^---\n([\s\S]*?)\n---/)?.[1];
+// One frontmatter field's value, with its quotes stripped and a `>` or `|` block folded onto one line, so an absent or
+// blank field reads as "".
+function frontmatterField(body, key) {
+  const lines = frontmatterOf(body)?.split("\n") ?? [];
+  const at = lines.findIndex((line) => line.startsWith(`${key}:`));
+  if (at < 0) return "";
+  const value = lines[at].slice(key.length + 1).trim();
+  if (!/^[>|][+-]?$/.test(value)) return value.replace(/^(["'])(.*)\1$/, "$2");
+  const out = [];
+  for (const line of lines.slice(at + 1)) {
+    if (line.trim() && !/^\s/.test(line)) break;
+    if (line.trim()) out.push(line.trim());
+  }
+  return out.join(" ");
+}
 const sha256 = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
 const upstreamSkillNames = new Set();
 const skills = [...SKILL_ROOTS, ADAPTER_ROOT].flatMap((root) =>
@@ -144,8 +168,13 @@ const skillNames = skills.map(({ name }) => name);
 // A path under skills/<name>/ of a dropped upstream skill, relative to its root.
 const isDropped = (root, path) => root !== ADAPTER_ROOT && /^skills\/[^/]+\//.test(path) && Object.hasOwn(DROPPED_SKILLS, path.split("/")[1]);
 const skillDir = ({ name, root }) => join(ROOT_DIRS[root], "skills", name);
-const rootOf = (path) => skills.find(({ name }) => `${path}/`.startsWith(`skills/${name}/`))?.root ?? "pstack";
 const agents = readdirSync(AGENTS).filter((name) => name.endsWith(".md"));
+const adapterAgents = readdirSync(ADAPTER_AGENTS).filter((name) => name.endsWith(".md"));
+const adapterAgentPaths = new Set(adapterAgents.map((name) => `agents/${name}`));
+const rootOf = (path) =>
+  adapterAgentPaths.has(path)
+    ? ADAPTER_ROOT
+    : skills.find(({ name }) => `${path}/`.startsWith(`skills/${name}/`))?.root ?? "pstack";
 
 // The adapter's `## ` sections: prose before the table, and the table's rows.
 const adapter = readFileSync(ADAPTER_SOURCE, "utf8");
@@ -173,8 +202,8 @@ const rewrites = (sections.find((section) => section.heading === REWRITE_SECTION
 // with `disable-model-invocation: true` as the last line of its frontmatter, unless it already sets the field.
 const HIDDEN = /^disable-model-invocation:/m;
 const hidden = (body) => {
-  const match = body.match(/^---\n([\s\S]*?)\n---/);
-  return !match || HIDDEN.test(match[1]) ? body : `---\n${match[1]}\ndisable-model-invocation: true${body.slice(match[0].length - 4)}`;
+  const block = frontmatterOf(body);
+  return block === undefined || HIDDEN.test(block) ? body : `---\n${block}\ndisable-model-invocation: true${body.slice(block.length + 4)}`;
 };
 // Upstream pins agents to a Cursor slug such as `claude-opus-5-5-xhigh-fast`. omp reads an agent's `model:` as an omp
 // selector, resolves that slug to its Cursor provider, and runs the agent there or on the session model, depending on
@@ -260,10 +289,18 @@ for (const [index, skill] of skills.entries()) {
   if (twin) problems.push(`${folder} and ${relative(ROOT, skillDir(twin))} both want skills/${skill.name}`);
   if (skill.name === ADAPTER_SKILL) problems.push(`${folder} takes skills/${ADAPTER_SKILL}, which the omp adapter needs`);
   // omp lists a plugin skill by its frontmatter `name`; Cursor runs it by its folder name.
-  const frontmatter = readFileSync(join(skillDir(skill), "SKILL.md"), "utf8").match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
-  const name = frontmatter.match(/^name:(.*)$/m)?.[1].trim().replace(/^(["'])(.*)\1$/, "$2");
-  if (name !== skill.name) problems.push(`${folder}/SKILL.md has name ${JSON.stringify(name ?? "")}, not its folder name ${skill.name}`);
+  const body = readFileSync(join(skillDir(skill), "SKILL.md"), "utf8");
+  const name = frontmatterField(body, "name");
+  if (name !== skill.name) problems.push(`${folder}/SKILL.md has name ${JSON.stringify(name)}, not its folder name ${skill.name}`);
   if (!SKILL_NAME.test(skill.name) || skill.name.length > 64) problems.push(`${folder} is not lowercase words joined by hyphens, at most 64 characters`);
+}
+// omp finds an agent by its frontmatter `name`, and both sets land in agents/, so a port agent may not reuse one.
+const agentName = (path) => frontmatterField(readFileSync(path, "utf8"), "name");
+const upstreamAgentNames = new Map(agents.map((name) => [agentName(join(AGENTS, name)), name]));
+for (const name of adapterAgents) {
+  const own = agentName(join(ADAPTER_AGENTS, name));
+  const taken = upstreamAgentNames.get(own);
+  if (taken) problems.push(`adapter/agents/${name} is named ${JSON.stringify(own)}, which upstream's agents/${taken} already is`);
 }
 for (const skill of REQUIRED_SKILLS) {
   if (Object.hasOwn(DROPPED_SKILLS, skill)) problems.push(`${skill} is in DROPPED_SKILLS, but the omp tree points users or agents at it. Delete it from DROPPED_SKILLS or REQUIRED_SKILLS`);
@@ -271,6 +308,21 @@ for (const skill of REQUIRED_SKILLS) {
 }
 for (const name of Object.keys(DROPPED_SKILLS)) {
   if (!upstreamSkillNames.has(name)) problems.push(`${name} is gone upstream. Delete it from DROPPED_SKILLS`);
+}
+// A folder in adapter/skills/ is a skill only through its SKILL.md, and the generator copies a skill's files only once
+// it lists that folder as a skill, so a folder without one ships nothing while its files sit in the repo.
+for (const name of readdirSync(join(ROOT_DIRS[ADAPTER_ROOT], "skills"))) {
+  if (!existsSync(join(ROOT_DIRS[ADAPTER_ROOT], "skills", name, "SKILL.md"))) {
+    problems.push(`adapter/skills/${name} has no SKILL.md, so the tree ships none of it. Add the file, or move the folder out of adapter/skills`);
+  }
+}
+// adapter/skills/skill-creator is Anthropic's Apache-2.0 skill, so its license ships beside its SKILL.md.
+for (const [name, license] of Object.entries(ADAPTER_LICENSES)) {
+  const folder = join(ROOT_DIRS[ADAPTER_ROOT], "skills", name);
+  if (!existsSync(folder)) problems.push(`ADAPTER_LICENSES names adapter/skills/${name}, which is gone. Delete the entry`);
+  else if (!existsSync(join(folder, license))) {
+    problems.push(`adapter/skills/${name}/${license} is gone, and the skill ships under that license. Restore the file, or drop the skill and its ADAPTER_LICENSES entry`);
+  }
 }
 const claudeAdapter = sha256(join(PSTACK, CLAUDE_ADAPTER));
 if (claudeAdapter !== CLAUDE_ADAPTER_SHA256) {
@@ -348,6 +400,7 @@ function render() {
         .map((path) => [root, path]),
     ),
     ...[...walk(AGENTS), ...walk(join(PSTACK, GUIDE)), join(PSTACK, "README.md")].map((path) => ["pstack", path]),
+    ...walk(ADAPTER_AGENTS).map((path) => [ADAPTER_ROOT, path]),
   ];
   const files = new Map(
     copies.map(([root, path]) => {
@@ -391,11 +444,26 @@ function render() {
 // omp installs only the tree, so a relative link that works from upstream/ has to work inside the tree too.
 const files = render();
 const dangling = [];
+// A link is relative when it is neither empty nor absolute; an anchor inside the same file is neither.
+const relativeLink = (href) => {
+  const bare = href.replace(/[#?].*/, "");
+  return bare && !/^[a-z][a-z0-9+.-]*:/i.test(bare) ? bare : undefined;
+};
+const inTree = (path) => files.has(path) || [...files.keys()].some((key) => key.startsWith(`${path}/`));
 for (const [path, entry] of files) {
   if (!path.endsWith(".md")) continue;
   for (const [, href] of text(entry.bytes).matchAll(LINK)) {
     const target = resolve(path, href);
-    if (!target) continue;
+    if (!target) {
+      // resolve() answers undefined both for a link that is not relative and for a relative one whose target its
+      // upstream root has no copy of. The second ships broken unless the tree itself holds that path.
+      const bare = relativeLink(href);
+      const literal = bare && posix.join(posix.dirname(path), bare).replace(/\/$/, "");
+      if (literal && !inTree(literal)) {
+        dangling.push(`${TREE}/${path} links to ${href}, which neither upstream nor the tree has. Fix the path or drop the link`);
+      }
+      continue;
+    }
     const folder = path.split("/").slice(0, 2).join("/");
     if (rootOf(path) === ADAPTER_ROOT && !target.startsWith(`${folder}/`)) {
       dangling.push(`${TREE}/${path} links to ${href}, outside ${folder}. An adapter skill ships byte for byte, so its links stay in its folder`);
@@ -413,10 +481,42 @@ for (const path of [...walk(UPSTREAM).map((path) => relative(ROOT, path)), ...[.
   byLowercase.set(path.toLowerCase(), path);
 }
 for (const { name, root } of skills) {
-  const frontmatter = text(files.get(`skills/${name}/SKILL.md`).bytes).match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
+  const frontmatter = frontmatterOf(text(files.get(`skills/${name}/SKILL.md`).bytes)) ?? "";
   if (root !== "pstack" && !/^disable-model-invocation:\s*true\s*$/m.test(frontmatter)) {
     dangling.push(`skills/${name} is bundled from ${root}, so it must ship with disable-model-invocation: true`);
   }
+}
+// omp skips a skill or agent whose frontmatter it cannot read, silently: a plugin skill without a description never
+// reaches the catalog, and an agent without a name or description is dropped. So every skill and agent the tree ships
+// is read here, including the ones from adapter/.
+const prompts = [...files.keys()].filter((path) => /^(skills\/[^/]+\/SKILL\.md|agents\/[^/]+\.md)$/.test(path));
+const agentNames = new Map();
+for (const path of prompts) {
+  const body = text(files.get(path).bytes);
+  if (frontmatterOf(body) === undefined) {
+    dangling.push(`${TREE}/${path} has no frontmatter block, so omp skips it. Put a --- block with name and description at the top`);
+    continue;
+  }
+  for (const key of ["name", "description"]) {
+    if (frontmatterField(body, key)) continue;
+    dangling.push(`${TREE}/${path} has no ${key} in its frontmatter, so omp skips it. Add one`);
+  }
+  const agent = path.match(/^agents\/([^/]+)\.md$/);
+  const name = agent && frontmatterField(body, "name").toLowerCase();
+  if (!name) continue;
+  // omp finds an agent by its frontmatter `name`, so a file name that differs from it sends `agent: "<file name>"`
+  // and the adapter rows naming the agent nowhere.
+  if (name !== agent[1].toLowerCase()) {
+    dangling.push(`${TREE}/${path} is named ${JSON.stringify(name)}, not its file name, and omp finds an agent by its name. Rename one`);
+  }
+  // omp gives `main` to the top-level session and `sub` to a subagent with no name, and drops an agent that takes
+  // either, so it can never load rules scoping them.
+  if (name === "main" || name === "sub") {
+    dangling.push(`${TREE}/${path} is named ${JSON.stringify(name)}, which omp reserves for a session kind. Rename the agent`);
+  }
+  // omp finds an agent by its frontmatter name, so two of them under one name leave one unreachable.
+  if (agentNames.has(name)) dangling.push(`${TREE}/${path} and ${agentNames.get(name)} are both named ${JSON.stringify(name)}, so one is unreachable. Rename one`);
+  else agentNames.set(name, `${TREE}/${path}`);
 }
 for (const link of dangling) console.log(`FAIL ${link}`);
 if (dangling.length > 0) process.exit(1);

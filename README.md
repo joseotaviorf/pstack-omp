@@ -1,11 +1,11 @@
 # pstack for omp
 
-[pstack](https://github.com/cursor/plugins/tree/main/pstack) by [poteto](https://x.com/poteto), packaged for [omp](https://github.com/can1357/oh-my-pi). It tracks upstream daily.
+[pstack](https://github.com/cursor/plugins/tree/main/pstack) by [poteto](https://x.com/poteto), packaged for [omp](https://github.com/can1357/oh-my-pi). It tracks upstream daily. Forked from [gokselk/pstack-omp](https://github.com/gokselk/pstack-omp).
 
 ## install
 
 ```bash
-omp plugin marketplace add gokselk/pstack-omp
+omp plugin marketplace add joseotaviorf/pstack-omp
 omp plugin install pstack@pstack-omp
 ```
 

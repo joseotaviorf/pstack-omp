@@ -6,25 +6,26 @@ disable-model-invocation: true
 
 # Arena
 
-In omp, map the Cursor names in this skill with these rows. `skill://pstack-omp-adapter` has the full map. If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. Write the omp name, never the Cursor one, in replies, briefs, and questions to the user.
+In omp, map the Cursor names in this skill with these rows. `skill://pstack-omp-adapter` has the full map. If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. Write the omp name, never the Cursor one, in replies, briefs, and questions to the user. Where the operator's own `RULES.md` or `AGENTS.md` sets a limit this text loosens, the operator's rule wins.
 
-When the `task` description lists approved per-call models, set `model` on every item whose role line names a model. Use the role's value unchanged. The list appears only when `task.perCallModel` is on. A `model` field in the schema alone is not enough, because the bundled seance agent adds it too. Without the list, leave `model` off, say so once per session, and tell the user that `/skill:setup-pstack` turns per-role models on.
+pstack names a model for each role. In omp the operator's model roles decide instead: each role's model comes from `modelRoles`, and `retry.fallbackChains` takes over when it fails. So pick the agent bound to the role, and never set `model` on a task item. Raise or lower a role's level with the item's `effort` (`hi` or `lo`) when the `task` schema offers it; otherwise drop the level.
 
 | Cursor | omp |
 | --- | --- |
-| `Task` | `task`. With the batch schema, send `{ context, tasks: [{ agent, model, name, task, solutionSpace }] }`: `context` is shared background and each `task` is self-contained. |
+| `Task` | `task`. With the batch schema, send `{ context, tasks: [{ agent, name, task, solutionSpace }] }`: `context` is shared background and each `task` is self-contained. |
 | Open a todolist, or copy steps into the todolist tool | `todo` with `op: "init"`, one phase per playbook stage. Send it beside your next real tool call. Subagents have no `todo`, so they keep the list in their reply. |
 | Run another pstack skill (`/name` or "the **name** skill") | `read skill://<name>` and follow it. When you tell the user to type it, write `/skill:<name>`. |
 | `subagent_type: generalPurpose` | Omit `agent`. The default `task` agent runs. |
-| `readonly: true` | Set `agent: "pstack-readonly"`, and `model` too when the role names one. Its `bash` is for read-only commands, so it is not a sandbox: check `git status` afterward. |
+| `readonly: true` | Set `agent: "pstack-readonly"`. It runs on the session's model. Its `bash` is for read-only commands, so it is not a sandbox: check `git status` afterward. |
 | `run_in_background: true` | Omit. With async on, spawns already run in the background and their results arrive on their own. Call `wait` only when you are blocked with nothing else to do. |
 | A pstack file in a `Task` brief, such as a reference prompt or a playbook | Name it as `skill://<name>/<path>`, such as `skill://poteto-mode/playbooks/feature.md`. Subagents resolve it as you do; a relative or `plugins/pstack/...` path sends them searching the disk. When the brief has them follow a pstack skill or reference prompt, also tell them to read `skill://pstack-omp-adapter` first. |
-| `claude-<family>-<version>-<effort>[-fast]`, such as `claude-opus-5-5-xhigh-fast` | `model: "<provider>/<model-id>:<effort>"`, such as `anthropic/claude-opus-5-5:xhigh`. Take `<provider>/<model-id>` exactly as `omp models` lists it. Drop `-fast`. |
-| A `gemini-*` or other slug | The same shape, with the selector `omp models` lists for that model, such as `google/gemini-4-neon:xhigh`. If none is listed, omit `model` and say so. |
-| `auto` or `inherit-parent` | Omit `model`. pstack for omp ships `poteto-agent` without a model of its own, so it runs on the session model too. |
-| The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | `~/.omp/agent/rules/pstack-models.md`. It is an always-applied rule, so its role lines are already in your system prompt. If they are not, read the file. Its role values are `<provider>/<model-id>:<effort>` selectors. If the file or the role's line is missing, use the skill's default slug. omp also loads `~/.cursor/rules/*.mdc`, so map any Cursor slug you find there with the rows above. |
-| The `Task` tool rejects the slug | Preflight fails with `Per-call model … is not approved` or `not available`. Handle it as the skill's rejected-slug case. If preflight says `task.perCallModel` does not allow the call, omit `model` for the rest of the session and say so once. |
-| `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md`, or a `.omp/rules/<name>.md` rule with `alwaysApply: true`. User-wide rules go in `~/.omp/agent/rules/`. The model rule is the exception. See Models. |
+| `claude-opus-5-5-xhigh-fast` or another `claude-` slug for code, prose, or judgment: the feature, refactoring, bug-fix, perf-issue, hillclimb, and judgment and prose roles | `agent: "poteto-agent"`. It runs on the `slow` role. |
+| `claude-opus-5-5-high-fast` for trivial mechanical edits, swarm workers, or verification | Omit `agent`. The bundled `task` agent runs on the `task` role. |
+| A panel seat: `claude-fable-5-2-high`, `claude-opus-5-5-high-fast`, and `gemini-4-neon-xhigh`, or any `gemini-`, `grok-`, or `gpt-` slug | One seat each with `agent: "pstack-seat-advisor"`, `"pstack-seat-plan"`, and `"pstack-seat-slow"`, which run on the `advisor`, `plan`, and `slow` roles. Each result names its model; when two seats share a model family, say so. Fable 5.2 outside a panel is `pstack-seat-advisor`, under the skill's same conditions. |
+| `auto` or `inherit-parent` | Omit `agent`. The bundled `task` agent runs on the `task` role. |
+| The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc`, and its role lines | omp has no pstack model rule: the operator's `modelRoles` play its part, and a `task.agentModelOverrides` entry moves a pstack agent to another role. Skip every step that reads or checks the rule, such as the `# defaults: 3` notice. |
+| The `Task` tool rejects the slug | Never pass `model`, so this cannot happen. If preflight rejects an `agent`, run the item without `agent` and say so. |
+| `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md`, or a `.omp/rules/<name>.md` rule with `alwaysApply: true`. User-wide rules go in `~/.omp/agent/rules/`. |
 
 Open a todolist with one entry per phase (Frame, Fan out, Cross-judge, Pick, Graft, Verify) before launching anything.
 

@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # Poteto help
 
-In omp, map the Cursor names in this skill with these rows. `skill://pstack-omp-adapter` has the full map. If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. Write the omp name, never the Cursor one, in replies, briefs, and questions to the user.
+In omp, map the Cursor names in this skill with these rows. `skill://pstack-omp-adapter` has the full map. If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. Write the omp name, never the Cursor one, in replies, briefs, and questions to the user. Where the operator's own `RULES.md` or `AGENTS.md` sets a limit this text loosens, the operator's rule wins.
 
-When the `task` description lists approved per-call models, set `model` on every item whose role line names a model. Use the role's value unchanged. The list appears only when `task.perCallModel` is on. A `model` field in the schema alone is not enough, because the bundled seance agent adds it too. Without the list, leave `model` off, say so once per session, and tell the user that `/skill:setup-pstack` turns per-role models on.
+pstack names a model for each role. In omp the operator's model roles decide instead: each role's model comes from `modelRoles`, and `retry.fallbackChains` takes over when it fails. So pick the agent bound to the role, and never set `model` on a task item. Raise or lower a role's level with the item's `effort` (`hi` or `lo`) when the `task` schema offers it; otherwise drop the level.
 
 omp has no Cursor Automations, Bugbot, Cursor cloud agents, Cursor Projects, or built-in PR tool. When a step needs one, put one line in your reply, `Skipped in omp: <step>. <reason>.`, then go on to the next step. Do not stop, ask, or retry. When a later step needs what the skipped step made, such as a URL or a key, leave a placeholder and name it in the line.
 
@@ -20,9 +20,10 @@ omp has no Cursor Automations, Bugbot, Cursor cloud agents, Cursor Projects, or 
 | Cursor's built-in `create-skill` skill, `/create-skill` | `read skill://skill-creator` and follow it. pstack for omp ships Anthropic's skill-creator, adapted for omp. Its draft, test, and iterate loop runs test cases as `task` subagents, and its description optimization (`scripts/run_loop.py`) runs on `omp -p`. |
 | Cursor's Plan Mode | omp's plan mode. The user toggles it with `/plan` or Alt+Shift+P. |
 | `poteto-agent`, `comment-sicko`, `subagent_type: "poteto-agent"` | Set `agent: "poteto-agent"` or `agent: "comment-sicko"` on each task item. The plugin ships both without a prefix. An item without `agent` runs the generic `task` agent, which never loads poteto-mode. |
-| `auto` or `inherit-parent` | Omit `model`. pstack for omp ships `poteto-agent` without a model of its own, so it runs on the session model too. |
-| The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | `~/.omp/agent/rules/pstack-models.md`. It is an always-applied rule, so its role lines are already in your system prompt. If they are not, read the file. Its role values are `<provider>/<model-id>:<effort>` selectors. If the file or the role's line is missing, use the skill's default slug. omp also loads `~/.cursor/rules/*.mdc`, so map any Cursor slug you find there with the rows above. |
-| `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md`, or a `.omp/rules/<name>.md` rule with `alwaysApply: true`. User-wide rules go in `~/.omp/agent/rules/`. The model rule is the exception. See Models. |
+| `claude-opus-5-5-xhigh-fast` or another `claude-` slug for code, prose, or judgment: the feature, refactoring, bug-fix, perf-issue, hillclimb, and judgment and prose roles | `agent: "poteto-agent"`. It runs on the `slow` role. |
+| `auto` or `inherit-parent` | Omit `agent`. The bundled `task` agent runs on the `task` role. |
+| The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc`, and its role lines | omp has no pstack model rule: the operator's `modelRoles` play its part, and a `task.agentModelOverrides` entry moves a pstack agent to another role. Skip every step that reads or checks the rule, such as the `# defaults: 3` notice. |
+| `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md`, or a `.omp/rules/<name>.md` rule with `alwaysApply: true`. User-wide rules go in `~/.omp/agent/rules/`. |
 | Installing or updating pstack: `/add-plugin pstack`, Customize in the sidebar, `/plugin install` | `omp plugin marketplace add joseotaviorf/pstack-omp`, then `omp plugin install pstack@pstack-omp`. To update, `omp plugin marketplace update pstack-omp`, then `omp plugin upgrade pstack@pstack-omp`. Then start a new session, or run `/reload-plugins` in an open one. |
 | Cursor Automations: routines, `update_state` routine calls, `api2.cursor.sh/automations` webhooks, routine wakes, and `SendToUser` secret requests | Skip with the line. |
 | Bugbot | Bugbot comments on a GitHub PR are ordinary review threads, so triage them with the forge command that the step gives. Skip a step that starts, waits for, or configures Bugbot when the PR has no Bugbot check or comment. |

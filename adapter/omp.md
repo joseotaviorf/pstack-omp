@@ -22,7 +22,7 @@ pstack skills use Cursor names. In omp, read this once per session, then map eac
 | --- | --- |
 | `subagent_type: generalPurpose` | Omit `agent`. The default `task` agent runs. |
 | `poteto-agent`, `comment-sicko`, `subagent_type: "poteto-agent"` | Set `agent: "poteto-agent"` or `agent: "comment-sicko"` on each task item. The plugin ships both without a prefix. An item without `agent` runs the generic `task` agent, which never loads poteto-mode. |
-| `readonly: true` | Omit `agent`, and the brief says "read-only: do not edit, write, or commit files". Check `git status` afterward. Do not use `scout` for a role that names a model: it is a cheap lookup agent. |
+| `readonly: true` | Set `agent: "pstack-readonly"`, and `model` too when the role names one. Its `bash` is for read-only commands, so it is not a sandbox: check `git status` afterward. |
 | `readonly: false` | Omit `agent`. The `task` agent keeps the session's MCP tools. |
 | `environment: "cloud"` | `isolated: true` when the `task` schema offers `isolated` (needs `task.isolation.enabled`). Name the branch or commit the worker checks out. Without it, make a checkout with `git worktree add`, or `ovnfs new` when the system prompt offers it, and give the worker its path. |
 | `environment: "local"` | Omit. |

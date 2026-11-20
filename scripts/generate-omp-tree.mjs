@@ -27,6 +27,9 @@ const SKILL_ROOTS = ["pstack", KIT];
 const ADAPTER_ROOT = "adapter";
 const ROOT_DIRS = { pstack: PSTACK, [KIT]: join(UPSTREAM, KIT), [ADAPTER_ROOT]: join(ROOT, "adapter") };
 const AGENTS = join(PSTACK, "agents");
+// adapter/agents holds agents this fork writes for omp, such as its read-only agent. They ship byte for byte, like
+// adapter/skills: no adapter rows, no path rewrites, and no upstream copy to fall back on.
+const ADAPTER_AGENTS = join(ROOT_DIRS[ADAPTER_ROOT], "agents");
 const ADAPTER_SOURCE = join(ROOT_DIRS[ADAPTER_ROOT], "omp.md");
 // The adapter ships as a hidden skill so every skill, agent, and subagent reaches it by one URL, with no path to work out.
 const ADAPTER_SKILL = "pstack-omp-adapter";
@@ -128,6 +131,24 @@ function file(path) {
 }
 
 const text = (bytes) => Buffer.from(bytes).toString("utf8");
+
+// The frontmatter block of a markdown file, or undefined when it has none.
+const frontmatterOf = (body) => body.match(/^---\n([\s\S]*?)\n---/)?.[1];
+// One frontmatter field's value, with its quotes stripped and a `>` or `|` block folded onto one line, so an absent or
+// blank field reads as "".
+function frontmatterField(body, key) {
+  const lines = frontmatterOf(body)?.split("\n") ?? [];
+  const at = lines.findIndex((line) => line.startsWith(`${key}:`));
+  if (at < 0) return "";
+  const value = lines[at].slice(key.length + 1).trim();
+  if (!/^[>|][+-]?$/.test(value)) return value.replace(/^(["'])(.*)\1$/, "$2");
+  const out = [];
+  for (const line of lines.slice(at + 1)) {
+    if (line.trim() && !/^\s/.test(line)) break;
+    if (line.trim()) out.push(line.trim());
+  }
+  return out.join(" ");
+}
 const sha256 = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
 const upstreamSkillNames = new Set();
 const skills = [...SKILL_ROOTS, ADAPTER_ROOT].flatMap((root) =>
@@ -144,8 +165,13 @@ const skillNames = skills.map(({ name }) => name);
 // A path under skills/<name>/ of a dropped upstream skill, relative to its root.
 const isDropped = (root, path) => root !== ADAPTER_ROOT && /^skills\/[^/]+\//.test(path) && Object.hasOwn(DROPPED_SKILLS, path.split("/")[1]);
 const skillDir = ({ name, root }) => join(ROOT_DIRS[root], "skills", name);
-const rootOf = (path) => skills.find(({ name }) => `${path}/`.startsWith(`skills/${name}/`))?.root ?? "pstack";
 const agents = readdirSync(AGENTS).filter((name) => name.endsWith(".md"));
+const adapterAgents = readdirSync(ADAPTER_AGENTS).filter((name) => name.endsWith(".md"));
+const adapterAgentPaths = new Set(adapterAgents.map((name) => `agents/${name}`));
+const rootOf = (path) =>
+  adapterAgentPaths.has(path)
+    ? ADAPTER_ROOT
+    : skills.find(({ name }) => `${path}/`.startsWith(`skills/${name}/`))?.root ?? "pstack";
 
 // The adapter's `## ` sections: prose before the table, and the table's rows.
 const adapter = readFileSync(ADAPTER_SOURCE, "utf8");
@@ -265,6 +291,14 @@ for (const [index, skill] of skills.entries()) {
   if (name !== skill.name) problems.push(`${folder}/SKILL.md has name ${JSON.stringify(name ?? "")}, not its folder name ${skill.name}`);
   if (!SKILL_NAME.test(skill.name) || skill.name.length > 64) problems.push(`${folder} is not lowercase words joined by hyphens, at most 64 characters`);
 }
+// omp finds an agent by its frontmatter `name`, and both sets land in agents/, so a port agent may not reuse one.
+const agentName = (path) => frontmatterField(readFileSync(path, "utf8"), "name");
+const upstreamAgentNames = new Map(agents.map((name) => [agentName(join(AGENTS, name)), name]));
+for (const name of adapterAgents) {
+  const own = agentName(join(ADAPTER_AGENTS, name));
+  const taken = upstreamAgentNames.get(own);
+  if (taken) problems.push(`adapter/agents/${name} is named ${JSON.stringify(own)}, which upstream's agents/${taken} already is`);
+}
 for (const skill of REQUIRED_SKILLS) {
   if (Object.hasOwn(DROPPED_SKILLS, skill)) problems.push(`${skill} is in DROPPED_SKILLS, but the omp tree points users or agents at it. Delete it from DROPPED_SKILLS or REQUIRED_SKILLS`);
   else if (!skillNames.includes(skill)) problems.push(`skills/${skill} is gone, but the omp tree points users or agents at it`);
@@ -348,6 +382,7 @@ function render() {
         .map((path) => [root, path]),
     ),
     ...[...walk(AGENTS), ...walk(join(PSTACK, GUIDE)), join(PSTACK, "README.md")].map((path) => ["pstack", path]),
+    ...walk(ADAPTER_AGENTS).map((path) => [ADAPTER_ROOT, path]),
   ];
   const files = new Map(
     copies.map(([root, path]) => {

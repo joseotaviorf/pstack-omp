@@ -1,6 +1,6 @@
 {
   "name": "pstack",
-  "version": "0.15.46-omp.2",
+  "version": "0.15.46-omp.3",
   "private": true,
   "omp": {
     "extensions": [

@@ -208,11 +208,15 @@ const hidden = (body) => {
   const block = frontmatterOf(body);
   return block === undefined || HIDDEN.test(block) ? body : `---\n${block}\ndisable-model-invocation: true${body.slice(block.length + 4)}`;
 };
-// Upstream pins agents to a Cursor slug such as `claude-opus-5-5-xhigh-fast`. omp reads an agent's `model:` as an omp
-// selector, resolves that slug to its Cursor provider, and runs the agent there or on the session model, depending on
-// the user's Cursor login. Without the line, an agent runs on the session model unless the call passes an approved
-// per-call `model`, as every other omp subagent does.
-const unpinned = (body) => body.replace(/^---\n[\s\S]*?\n---/, (frontmatter) => frontmatter.replace(/^model:.*\n/m, ""));
+// Upstream pins agents to a Cursor slug such as `claude-opus-5-5-xhigh-fast`. omp would resolve that slug to its
+// Cursor provider, so the tree swaps it for the omp model role with the same job. An agent whose `model:` is a role
+// alias runs on that role's model and inherits that role's fallback chain, so the operator's `modelRoles` and
+// `retry.fallbackChains` decide, as for omp's bundled reviewer (`@slow`).
+const AGENT_ROLES = { "claude-opus-5-5-xhigh-fast": "@slow" };
+const roleRouted = (body) =>
+  body.replace(/^---\n[\s\S]*?\n---/, (frontmatter) =>
+    frontmatter.replace(/^model: *(.+)\n/m, (line, slug) => `model: "${AGENT_ROLES[slug.trim()]}"\n`),
+  );
 const rewritten = new Set();
 function source(path) {
   return rewrites.reduce((body, [from, to]) => {
@@ -272,7 +276,8 @@ function mappingFor({ usesCursorNames, name, what }) {
   const block = [
     `In omp, map the Cursor names in this ${what} with these rows. \`skill://${ADAPTER_SKILL}\` has the full map. ` +
       "If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. " +
-      "Write the omp name, never the Cursor one, in replies, briefs, and questions to the user.",
+      "Write the omp name, never the Cursor one, in replies, briefs, and questions to the user. " +
+      "Where the operator's own `RULES.md` or `AGENTS.md` sets a limit this text loosens, the operator's rule wins.",
     ...used.map((section) => paragraphs(section.prose)).filter(Boolean),
     ["| Cursor | omp |", "| --- | --- |", ...used.flatMap((section) => section.rows.filter((row) => picked.has(row)))].join("\n"),
     ...(own ? [paragraphs(own.prose)] : []),
@@ -367,6 +372,12 @@ for (const [from, to] of rewrites) {
   if (to === undefined) problems.push(`adapter/omp.md "${REWRITE_SECTION}" row is not two code spans: ${from}`);
   else if (!rewritten.has(from)) problems.push(`adapter/omp.md "${REWRITE_SECTION}" row ${from} matches nothing upstream. Delete the row`);
 }
+for (const agent of agents) {
+  const pin = frontmatterField(readFileSync(join(AGENTS, agent), "utf8"), "model");
+  if (pin !== "" && !Object.hasOwn(AGENT_ROLES, pin)) {
+    problems.push(`upstream pins agents/${agent} to ${pin}. Map it to an omp model role in AGENT_ROLES`);
+  }
+}
 for (const problem of problems) console.log(`FAIL ${problem}`);
 if (problems.length > 0) process.exit(1);
 
@@ -413,7 +424,7 @@ function render() {
       const body = source(path);
       const hide = root === KIT && /^skills\/[^/]+\/SKILL\.md$/.test(key);
       const agent = /^agents\/[^/]+\.md$/.test(key);
-      return [key, { ...file(path), bytes: Buffer.from(hide ? hidden(body) : agent ? unpinned(body) : body) }];
+      return [key, { ...file(path), bytes: Buffer.from(hide ? hidden(body) : agent ? roleRouted(body) : body) }];
     }),
   );
   files.set(ADAPTER, { bytes: Buffer.from(ADAPTER_FRONTMATTER + adapter), executable: false });

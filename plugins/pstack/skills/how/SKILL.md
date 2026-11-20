@@ -6,17 +6,17 @@ disable-model-invocation: true
 
 # How
 
-In omp, map the Cursor names in this skill with these rows. `skill://pstack-omp-adapter` has the full map. If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. Write the omp name, never the Cursor one, in replies, briefs, and questions to the user.
+In omp, map the Cursor names in this skill with these rows. `skill://pstack-omp-adapter` has the full map. If a Cursor field has no row in either, drop it and say so. Never pass a field or value the tool schema rejects. Write the omp name, never the Cursor one, in replies, briefs, and questions to the user. Where the operator's own `RULES.md` or `AGENTS.md` sets a limit this text loosens, the operator's rule wins.
 
-When the `task` description lists approved per-call models, set `model` on every item whose role line names a model. Use the role's value unchanged. The list appears only when `task.perCallModel` is on. A `model` field in the schema alone is not enough, because the bundled seance agent adds it too. Without the list, leave `model` off, say so once per session, and tell the user that `/skill:setup-pstack` turns per-role models on.
+pstack names a model for each role. In omp the operator's model roles decide instead: each role's model comes from `modelRoles`, and `retry.fallbackChains` takes over when it fails. So pick the agent bound to the role, and never set `model` on a task item. Raise or lower a role's level with the item's `effort` (`hi` or `lo`) when the `task` schema offers it; otherwise drop the level.
 
 | Cursor | omp |
 | --- | --- |
-| `Task` | `task`. With the batch schema, send `{ context, tasks: [{ agent, model, name, task, solutionSpace }] }`: `context` is shared background and each `task` is self-contained. |
+| `Task` | `task`. With the batch schema, send `{ context, tasks: [{ agent, name, task, solutionSpace }] }`: `context` is shared background and each `task` is self-contained. |
 | `subagent_type: generalPurpose` | Omit `agent`. The default `task` agent runs. |
-| `readonly: true` | Set `agent: "pstack-readonly"`, and `model` too when the role names one. Its `bash` is for read-only commands, so it is not a sandbox: check `git status` afterward. |
+| `readonly: true` | Set `agent: "pstack-readonly"`. It runs on the session's model. Its `bash` is for read-only commands, so it is not a sandbox: check `git status` afterward. |
 | A pstack file in a `Task` brief, such as a reference prompt or a playbook | Name it as `skill://<name>/<path>`, such as `skill://poteto-mode/playbooks/feature.md`. Subagents resolve it as you do; a relative or `plugins/pstack/...` path sends them searching the disk. When the brief has them follow a pstack skill or reference prompt, also tell them to read `skill://pstack-omp-adapter` first. |
-| The `Task` tool rejects the slug | Preflight fails with `Per-call model … is not approved` or `not available`. Handle it as the skill's rejected-slug case. If preflight says `task.perCallModel` does not allow the call, omit `model` for the rest of the session and say so once. |
+| The `Task` tool rejects the slug | Never pass `model`, so this cannot happen. If preflight rejects an `agent`, run the item without `agent` and say so. |
 
 Explore the codebase to answer "how does X work?" questions.
 

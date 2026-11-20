@@ -4,7 +4,7 @@ import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 const skill = await Bun.file(new URL("../skills/poteto-mode/SKILL.md", import.meta.url)).text();
 const body = skill.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
 const instructions = `<poteto-mode>
-Poteto mode is on for this session: follow the skill below on every task, without loading skill://poteto-mode again. Files it names by relative path, such as \`playbooks/feature.md\`, are \`skill://poteto-mode/<path>\`. The user turns the mode off with \`/poteto-mode off\`.
+Poteto mode is on for this session: follow the skill below on every task, without loading skill://poteto-mode again. Files it names by relative path, such as \`playbooks/feature.md\`, are \`skill://poteto-mode/<path>\`. The user turns the mode off with \`/poteto-mode off\`. Where the operator's own \`RULES.md\` or \`AGENTS.md\` sets a limit the skill loosens, the operator's rule wins.
 
 ${body}
 </poteto-mode>`;

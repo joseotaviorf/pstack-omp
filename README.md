@@ -14,7 +14,7 @@ Start a new session, or run `/reload-plugins` in an open one.
 ## get started
 
 1. Run `/skill:setup-pstack`. It asks for a reasoning budget and a model for each pstack role, and saves your choices as a rule. omp asks you to approve each settings change it makes. If you skip this step, every subagent runs on your session model.
-2. Use `/skill:poteto-mode <task>` for any task that needs rigor. Give the goal and a check that can pass or fail.
+2. Use `/skill:poteto-mode <task>` for any task that needs rigor, or run `/poteto-mode on` to keep poteto mode on in every turn of the session. Give the goal and a check that can pass or fail.
 
 If you edit the rule by hand, run `/skill:setup-pstack` again.
 
@@ -25,7 +25,8 @@ New to pstack? Read the [pstack guide](plugins/pstack/docs/guide/README.md). Stu
 pstack is written for Cursor. Each skill carries the omp mapping for the Cursor names it uses, so most of pstack works as written. These parts change:
 
 - Upstream docs write commands as `/name`. In omp, type `/skill:name`.
-- `omp -p` passes `/skill:name` through as plain text. There, write `read skill://poteto-mode and follow it: <task>` instead.
+- `omp -p` passes `/skill:name` through as plain text. There, write `read skill://<name> and follow it: <task>` instead.
+- Cursor keeps poteto mode on through a Custom Mode. omp has no Custom Modes, so pstack ships an extension: after `/poteto-mode on`, it adds `poteto-mode` to the main session's system prompt on every turn, until `/poteto-mode off`. Sessions start with it off, and resuming a session keeps its setting. Subagents don't get it, because they run on their brief and pstack's worker prompt.
 - Steps that need a Cursor-only feature are skipped with a one-line note.
 
 ## update

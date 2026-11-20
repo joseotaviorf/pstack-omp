@@ -68,6 +68,8 @@ Per-role models need `task.perCallModel: on` and each base model named by a `mod
 | `upstream/UPSTREAM.json` | the cursor/plugins commit, and the git object id of each vendored path. |
 | `adapter/omp.md` | the omp adapter, shipped as `skills/pstack-omp-adapter/SKILL.md`. Edit this one. |
 | `adapter/skills/` | skills written for omp, such as the adapted `skill-creator`, shipped byte for byte as `skills/<name>/`. Edit these. |
+| `adapter/agents/` | agents written for omp, such as `pstack-readonly`, shipped byte for byte as `agents/<name>.md`. Edit these. |
+| `adapter/extensions/` | omp extensions, shipped byte for byte as `extensions/<name>` and listed under `omp.extensions` in the tree's generated `package.json`. Today only `poteto-mode.ts`, whose `/poteto-mode on` keeps poteto mode on in every turn of the main session. Edit these. |
 | `adapter/guide-note.md` | the omp note under the H1 of the README, the guide's front page, and its setup page. Edit this one. |
 | `adapter/overlays/` | omp versions of upstream files, at their tree paths, shipped byte for byte in place of upstream's. Today only `skills/poteto-mode/scripts/worktree-audit.sh`. Edit these. |
 | `plugins/pstack/` | the generated plugin that omp installs. Do not edit it by hand. |
